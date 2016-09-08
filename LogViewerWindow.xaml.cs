@@ -20,19 +20,25 @@ namespace LogViewer
 {
     public partial class LogViewerWindow : Window
     {
-        private string _FileName = string.Empty;
+        #region Data Members
+
+        private string _fileName = string.Empty;
+        private List<LogEntry> _entries = new List<LogEntry>();
+        private int _currentIndex = 0;
+
+        #endregion
+
+        #region Properties
 
         private string FileName
         {
-            get { return _FileName; }
+            get { return _fileName; }
             set
             {
-                _FileName = value;
+                _fileName = value;
                 RecentFileList.InsertFile(value);
             }
         }
-
-        private List<LogEntry> _entries = new List<LogEntry>();
 
         public List<LogEntry> Entries
         {
@@ -42,29 +48,45 @@ namespace LogViewer
 
         public ICollectionView EntryCollection { get; set; }
 
+        #endregion
+
+        #region Constractors/Initializition
+
         public LogViewerWindow()
         {
             InitializeComponent();
             this.DataContext = this;
             listView1.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(ListView1_HeaderClicked));
+
             RecentFileList.UseXmlPersister();
             RecentFileList.MenuClick += (s, e) => OpenFile(e.Filepath);
 
-            imageError.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Error.Handle, Int32Rect.Empty, null);
-            imageInfo.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Information.Handle, Int32Rect.Empty, null);
-            imageWarn.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Warning.Handle, Int32Rect.Empty, null);
-            imageDebug.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Question.Handle, Int32Rect.Empty, null);
+            InitLevelIcons();
 
             Title = string.Format("LogViewer  v.{0}", Assembly.GetExecutingAssembly().GetName().Version);
+
             EntryCollection = CollectionViewSource.GetDefaultView(Entries);
             PopulateLevelDropDown();
         }
 
+        private void InitLevelIcons()
+        {
+            imageError.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Error.Handle, Int32Rect.Empty, null);
+            imageInfo.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Information.Handle, Int32Rect.Empty, null);
+            imageWarn.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Warning.Handle, Int32Rect.Empty, null);
+            imageDebug.Source = Imaging.CreateBitmapSourceFromHIcon(SystemIcons.Question.Handle, Int32Rect.Empty, null);
+        }
+
         private void PopulateLevelDropDown()
         {
-            var levels = Enum.GetValues(typeof(ELogLevelType)).Cast<ELogLevelType>();
+            var levels = Enum.GetValues(typeof (ELogLevelType)).Cast<ELogLevelType>();
             this.comboBoxLevel.ItemsSource = levels;
         }
+
+        #endregion
+
+        #region Private Methods
+
         private void Clear()
         {
             textBoxMessage.Text = string.Empty;
@@ -85,20 +107,21 @@ namespace LogViewer
 
             DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0);
             string sXml = string.Empty;
-            string sBuffer = string.Empty;
             int iIndex = 1;
 
             Clear();
 
             try
             {
-                FileStream oFileStream = new FileStream(FileName, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
+                FileStream oFileStream = new FileStream(FileName, FileMode.OpenOrCreate, FileAccess.Read,
+                    FileShare.ReadWrite);
                 StreamReader oStreamReader = new StreamReader(oFileStream);
-                sBuffer = string.Format("<root>{0}</root>", oStreamReader.ReadToEnd());
+                var sBuffer = string.Format("<root>{0}</root>", oStreamReader.ReadToEnd());
                 oStreamReader.Close();
                 oFileStream.Close();
 
                 #region Read File Buffer
+
                 ////////////////////////////////////////////////////////////////////////////////
                 StringReader oStringReader = new StringReader(sBuffer);
                 XmlTextReader oXmlTextReader = new XmlTextReader(oStringReader);
@@ -116,116 +139,121 @@ namespace LogViewer
                         logentry.Thread = oXmlTextReader.GetAttribute("thread");
 
                         #region get level
+
                         ////////////////////////////////////////////////////////////////////////////////
                         logentry.Level = oXmlTextReader.GetAttribute("level");
                         switch (logentry.Level)
                         {
                             case "ERROR":
-                                {
-                                    logentry.Image = LogEntry.Images(LogEntry.ImageType.Error);
-                                    break;
-                                }
+                            {
+                                logentry.Image = LogEntry.Images(LogEntry.ImageType.Error);
+                                break;
+                            }
                             case "INFO":
-                                {
-                                    logentry.Image = LogEntry.Images(LogEntry.ImageType.Info);
-                                    break;
-                                }
+                            {
+                                logentry.Image = LogEntry.Images(LogEntry.ImageType.Info);
+                                break;
+                            }
                             case "DEBUG":
-                                {
-                                    logentry.Image = LogEntry.Images(LogEntry.ImageType.Debug);
-                                    break;
-                                }
+                            {
+                                logentry.Image = LogEntry.Images(LogEntry.ImageType.Debug);
+                                break;
+                            }
                             case "WARN":
-                                {
-                                    logentry.Image = LogEntry.Images(LogEntry.ImageType.Warn);
-                                    break;
-                                }
+                            {
+                                logentry.Image = LogEntry.Images(LogEntry.ImageType.Warn);
+                                break;
+                            }
                             case "FATAL":
-                                {
-                                    logentry.Image = LogEntry.Images(LogEntry.ImageType.Fatal);
-                                    break;
-                                }
+                            {
+                                logentry.Image = LogEntry.Images(LogEntry.ImageType.Fatal);
+                                break;
+                            }
                             default:
-                                {
-                                    logentry.Image = LogEntry.Images(LogEntry.ImageType.Custom);
-                                    break;
-                                }
+                            {
+                                logentry.Image = LogEntry.Images(LogEntry.ImageType.Custom);
+                                break;
+                            }
                         }
                         ////////////////////////////////////////////////////////////////////////////////
+
                         #endregion
 
                         #region read xml
+
                         ////////////////////////////////////////////////////////////////////////////////
                         while (oXmlTextReader.Read())
                         {
-                            if (oXmlTextReader.Name == "log4j:event")   // end element
+                            if (oXmlTextReader.Name == "log4j:event") // end element
                                 break;
                             else
                             {
                                 switch (oXmlTextReader.Name)
                                 {
                                     case ("log4j:message"):
-                                        {
-                                            logentry.Message = oXmlTextReader.ReadString();
-                                            break;
-                                        }
+                                    {
+                                        logentry.Message = oXmlTextReader.ReadString();
+                                        break;
+                                    }
                                     case ("log4j:data"):
+                                    {
+                                        switch (oXmlTextReader.GetAttribute("name"))
                                         {
-                                            switch (oXmlTextReader.GetAttribute("name"))
+                                            case ("log4jmachinename"):
                                             {
-                                                case ("log4jmachinename"):
-                                                    {
-                                                        logentry.MachineName = oXmlTextReader.GetAttribute("value");
-                                                        break;
-                                                    }
-                                                case ("log4net:HostName"):
-                                                    {
-                                                        logentry.HostName = oXmlTextReader.GetAttribute("value");
-                                                        break;
-                                                    }
-                                                case ("log4net:UserName"):
-                                                    {
-                                                        logentry.UserName = oXmlTextReader.GetAttribute("value");
-                                                        break;
-                                                    }
-                                                case ("log4japp"):
-                                                    {
-                                                        logentry.App = oXmlTextReader.GetAttribute("value");
-                                                        break;
-                                                    }
+                                                logentry.MachineName = oXmlTextReader.GetAttribute("value");
+                                                break;
                                             }
-                                            break;
+                                            case ("log4net:HostName"):
+                                            {
+                                                logentry.HostName = oXmlTextReader.GetAttribute("value");
+                                                break;
+                                            }
+                                            case ("log4net:UserName"):
+                                            {
+                                                logentry.UserName = oXmlTextReader.GetAttribute("value");
+                                                break;
+                                            }
+                                            case ("log4japp"):
+                                            {
+                                                logentry.App = oXmlTextReader.GetAttribute("value");
+                                                break;
+                                            }
                                         }
+                                        break;
+                                    }
                                     case ("log4j:throwable"):
-                                        {
-                                            logentry.Throwable = oXmlTextReader.ReadString();
-                                            break;
-                                        }
+                                    {
+                                        logentry.Throwable = oXmlTextReader.ReadString();
+                                        break;
+                                    }
                                     case ("log4j:locationInfo"):
-                                        {
-                                            logentry.Class = oXmlTextReader.GetAttribute("class");
-                                            logentry.Method = oXmlTextReader.GetAttribute("method");
-                                            logentry.File = oXmlTextReader.GetAttribute("file");
-                                            logentry.Line = oXmlTextReader.GetAttribute("line");
-                                            break;
-                                        }
+                                    {
+                                        logentry.Class = oXmlTextReader.GetAttribute("class");
+                                        logentry.Method = oXmlTextReader.GetAttribute("method");
+                                        logentry.File = oXmlTextReader.GetAttribute("file");
+                                        logentry.Line = oXmlTextReader.GetAttribute("line");
+                                        break;
+                                    }
                                 }
                             }
                         }
                         ////////////////////////////////////////////////////////////////////////////////
+
                         #endregion
 
                         _entries.Add(logentry);
                         iIndex++;
 
                         #region Show Counts
+
                         ////////////////////////////////////////////////////////////////////////////////
                         int ErrorCount =
-                        (
-                            from entry in Entries
-                            where entry.Level == "ERROR"
-                            select entry
-                        ).Count();
+                            (
+                                from entry in Entries
+                                where entry.Level == "ERROR"
+                                select entry
+                                ).Count();
 
                         if (ErrorCount > 0)
                         {
@@ -240,11 +268,11 @@ namespace LogViewer
                         }
 
                         int InfoCount =
-                        (
-                            from entry in Entries
-                            where entry.Level == "INFO"
-                            select entry
-                        ).Count();
+                            (
+                                from entry in Entries
+                                where entry.Level == "INFO"
+                                select entry
+                                ).Count();
 
                         if (InfoCount > 0)
                         {
@@ -259,11 +287,11 @@ namespace LogViewer
                         }
 
                         int WarnCount =
-                        (
-                            from entry in Entries
-                            where entry.Level == "WARN"
-                            select entry
-                        ).Count();
+                            (
+                                from entry in Entries
+                                where entry.Level == "WARN"
+                                select entry
+                                ).Count();
 
                         if (WarnCount > 0)
                         {
@@ -278,11 +306,11 @@ namespace LogViewer
                         }
 
                         int DebugCount =
-                        (
-                            from entry in Entries
-                            where entry.Level == "DEBUG"
-                            select entry
-                        ).Count();
+                            (
+                                from entry in Entries
+                                where entry.Level == "DEBUG"
+                                select entry
+                                ).Count();
 
                         if (DebugCount > 0)
                         {
@@ -296,10 +324,12 @@ namespace LogViewer
                             labelDebugCount.Visibility = Visibility.Hidden;
                         }
                         ////////////////////////////////////////////////////////////////////////////////
+
                         #endregion
                     }
                 }
                 ////////////////////////////////////////////////////////////////////////////////
+
                 #endregion
             }
             catch (Exception ex)
@@ -307,8 +337,10 @@ namespace LogViewer
                 MessageBox.Show(ex.ToString());
             }
 
-            this.listView1.ItemsSource = _entries;
+            listView1.ItemsSource = _entries;
         }
+
+        #endregion
 
         #region ListView Events
         ////////////////////////////////////////////////////////////////////////////////
@@ -376,8 +408,8 @@ namespace LogViewer
         ////////////////////////////////////////////////////////////////////////////////
         #endregion
 
-        #region Menu Events
-        ////////////////////////////////////////////////////////////////////////////////
+        #region Events Handlers
+
         private void Window_Closing(object sender, CancelEventArgs e)
         {
 
@@ -415,15 +447,13 @@ namespace LogViewer
             this.Close();
         }
 
-
-        private int CurrentIndex = 0;
-        private void Find(int Direction)
+        private void Find(int direction)
         {
             if (textBoxFind.Text.Length > 0)
             {
-                if (Direction == 0)
+                if (direction == 0)
                 {
-                    for (int i = CurrentIndex + 1; i < listView1.Items.Count; i++)
+                    for (int i = _currentIndex + 1; i < listView1.Items.Count; i++)
                     {
                         LogEntry item = (LogEntry)listView1.Items[i];
                         if (item.Message.Contains(textBoxFind.Text))
@@ -433,14 +463,14 @@ namespace LogViewer
                             ListViewItem lvi = listView1.ItemContainerGenerator.ContainerFromIndex(i) as ListViewItem;
                             lvi.BringIntoView();
                             lvi.Focus();
-                            CurrentIndex = i;
+                            _currentIndex = i;
                             break;
                         }
                     }
                 }
                 else
                 {
-                    for (int i = CurrentIndex - 1; i > 0 && i < listView1.Items.Count; i--)
+                    for (int i = _currentIndex - 1; i > 0 && i < listView1.Items.Count; i--)
                     {
                         LogEntry item = (LogEntry)listView1.Items[i];
                         if (item.Message.Contains(textBoxFind.Text))
@@ -450,7 +480,7 @@ namespace LogViewer
                             ListViewItem lvi = listView1.ItemContainerGenerator.ContainerFromIndex(i) as ListViewItem;
                             lvi.BringIntoView();
                             lvi.Focus();
-                            CurrentIndex = i;
+                            _currentIndex = i;
                             break;
                         }
                     }
@@ -478,8 +508,6 @@ namespace LogViewer
                 }
             }
         }
-        ////////////////////////////////////////////////////////////////////////////////
-        #endregion
 
         private void ComboBoxLevel_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -497,6 +525,8 @@ namespace LogViewer
                 };
             }
         }
+
+        #endregion
     }
 
 }
