@@ -87,6 +87,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Helpers\ApplicationAttributes.cs" />
+    <Compile Include="Helpers\XMLReader.cs" />
     <Compile Include="Interfaces\IPersist.cs" />
     <Compile Include="ViewModels\ELogLevelType.cs" />
     <Compile Include="ViewModels\LogViewerViewModel.cs" />

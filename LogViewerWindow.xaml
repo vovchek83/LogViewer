@@ -82,6 +82,7 @@
                   Grid.Column="0" HorizontalAlignment="Left"
                   Style="{StaticResource RegularComboBoxStyle}"
                   Width="150" SelectionChanged="ComboBoxLevel_OnSelectionChanged"/>
+                    <TextBox x:Name="filterTextBox" Text="{Binding FilterText, Mode=OneWayToSource,UpdateSourceTrigger=PropertyChanged}" Margin="10,5,10,5" Width="150" />
         </StackPanel>
         <StackPanel Grid.Column="0" Orientation="Horizontal" Visibility="Collapsed">
           <Label Foreground="#FFC3C9E9"
