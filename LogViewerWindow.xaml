@@ -22,21 +22,19 @@
             <ColumnDefinition/>
             <ColumnDefinition Width="Auto" MinWidth="114"/>
           </Grid.ColumnDefinitions>
-          <Menu Name="menu1"
+                    <Menu Name="menu1"
                 Grid.ColumnSpan="2"
                 Background="Transparent"
             HorizontalAlignment="Stretch">
-            <MenuItem Header="File">
-              <MenuItem Header="Open" Click="MenuFileOpen_Click" />
-              <Separator BorderThickness="1" />
-              <helpers:RecentFileList x:Name="RecentFileList"/>
-              <Separator BorderThickness="1" />
-              <MenuItem Header="Exit" Click="MenuFileExit_Click"/>
-            </MenuItem>
-            <MenuItem Header="Refresh" Click="MenuRefresh_Click" />
-          </Menu>
-          
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Visibility="Visible"
+                        <MenuItem Header="File">
+                            <MenuItem Header="Open" Click="MenuFileOpen_Click" />
+                            <Separator BorderThickness="1" />
+                            <helpers:RecentFileList x:Name="RecentFileList"/>
+                            <Separator BorderThickness="1" />
+                            <MenuItem Header="Exit" Click="MenuFileExit_Click"/>
+                        </MenuItem>
+                    </Menu>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Visibility="Visible"
                   HorizontalAlignment="Right"
                   Background="Transparent" Width="114">
             <Grid>
@@ -76,13 +74,17 @@
             <ColumnDefinition Width="200"/>
           </Grid.ColumnDefinitions>
         </Grid>
-        <StackPanel Orientation="Horizontal">
+        <StackPanel Orientation="Horizontal" Height="35">
           <Label Margin="0,5,0,5">Level: </Label>
         <ComboBox x:Name="comboBoxLevel" Margin="5"
                   Grid.Column="0" HorizontalAlignment="Left"
                   Style="{StaticResource RegularComboBoxStyle}"
                   Width="150" SelectionChanged="ComboBoxLevel_OnSelectionChanged"/>
-                    <TextBox x:Name="filterTextBox" Text="{Binding FilterText, Mode=OneWayToSource,UpdateSourceTrigger=PropertyChanged}" Margin="10,5,10,5" Width="150" />
+        <TextBox x:Name="filterTextBox"
+                 Text="{Binding FilterText, Mode=OneWayToSource,UpdateSourceTrigger=PropertyChanged}" 
+                 Margin="10,5,10,5"
+                 Width="150" />
+                    <Button Margin="10,5,10,5" Content="Refresh" Click="MenuRefresh_Click" />
         </StackPanel>
         <StackPanel Grid.Column="0" Orientation="Horizontal" Visibility="Collapsed">
           <Label Foreground="#FFC3C9E9"

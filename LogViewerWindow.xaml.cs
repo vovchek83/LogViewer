@@ -6,8 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.IO;
-using System.Xml;
 using System.Drawing;
 using System.Windows.Threading;
 using System.ComponentModel;
@@ -26,6 +24,9 @@ namespace LogViewer
         private string _fileName = string.Empty;
         private List<LogEntry> _entries = new List<LogEntry>();
         private int _currentIndex = 0;
+        private bool _isLoaded;
+        private ListSortDirection _direction = ListSortDirection.Descending;
+        private string _filterText;
 
         #endregion
 
@@ -54,23 +55,46 @@ namespace LogViewer
             get { return _filterText; }
             set
             {
-                _fileName = value;
-                FilterMessage(_fileName);
+                _filterText = value;
+                FilterEntries();
             }
         }
 
-        private void FilterMessage(string text)
+        private void FilterEntries()
         {
-            if (string.IsNullOrEmpty(text))
+            string level = comboBoxLevel.SelectedItem.ToString();
+            string text = _filterText;
+            if (string.IsNullOrEmpty(text) && level == ELogLevelType.All.ToString())
             {
                 EntryCollection.Filter = null;
                 return;
             }
-            EntryCollection.Filter = item =>
+
+            if(level == ELogLevelType.All.ToString() && !string.IsNullOrEmpty(text))
             {
-                LogEntry vEntry = new LogEntry();
-                return vEntry.Message.ToLower().Contains(text.ToLower());
-            };
+                EntryCollection.Filter = item =>
+                {
+                    LogEntry vitem = item as LogEntry;
+                    return vitem != null && vitem.Message.ToLower().Contains(text.ToLower());
+                };
+            }
+            else if (level != ELogLevelType.All.ToString() && string.IsNullOrEmpty(text))
+            {
+                EntryCollection.Filter = item =>
+                {
+                    LogEntry vitem = item as LogEntry;
+                    return vitem != null && vitem.Level.ToLower() == level.ToLower();
+                };
+            }
+            else if (level != ELogLevelType.All.ToString() && !string.IsNullOrEmpty(text))
+            {
+                EntryCollection.Filter = item =>
+                {
+                    LogEntry vitem = item as LogEntry;
+                    return vitem != null && vitem.Message.ToLower().Contains(text.ToLower())
+                                         && vitem.Level.ToLower() == level.ToLower();
+                };
+            }
         }
         #endregion
 
@@ -105,6 +129,7 @@ namespace LogViewer
         {
             var levels = Enum.GetValues(typeof(ELogLevelType)).Cast<ELogLevelType>();
             this.comboBoxLevel.ItemsSource = levels;
+            comboBoxLevel.SelectedIndex = 0;
         }
 
         #endregion
@@ -113,6 +138,8 @@ namespace LogViewer
 
         private void Clear()
         {
+            _entries.Clear();
+            listView1.ItemsSource = null;
             textBoxMessage.Text = string.Empty;
             textBoxThrowable.Text = string.Empty;
         }
@@ -121,24 +148,21 @@ namespace LogViewer
         {
             FileName = fileName;
             LoadFile();
-            ShowCount();
+            ShowLevelsCount();
         }
 
-        private void ShowCount()
+        private void ShowLevelsCount()
         {
-            #region Show Counts
-
-            ////////////////////////////////////////////////////////////////////////////////
-            int ErrorCount =
+            int errorCount =
                 (
                     from entry in Entries
                     where entry.Level == "ERROR"
                     select entry
                     ).Count();
 
-            if (ErrorCount > 0)
+            if (errorCount > 0)
             {
-                labelErrorCount.Content = string.Format("{0:#,#}  ", ErrorCount);
+                labelErrorCount.Content = string.Format("{0:#,#}  ", errorCount);
                 labelErrorCount.Visibility = Visibility.Visible;
                 imageError.Visibility = Visibility.Visible;
             }
@@ -148,16 +172,16 @@ namespace LogViewer
                 imageError.Visibility = Visibility.Hidden;
             }
 
-            int InfoCount =
+            int infoCount =
                 (
                     from entry in Entries
                     where entry.Level == "INFO"
                     select entry
                     ).Count();
 
-            if (InfoCount > 0)
+            if (infoCount > 0)
             {
-                labelInfoCount.Content = string.Format("{0:#,#}  ", InfoCount);
+                labelInfoCount.Content = string.Format("{0:#,#}  ", infoCount);
                 labelInfoCount.Visibility = Visibility.Visible;
                 imageInfo.Visibility = Visibility.Visible;
             }
@@ -167,16 +191,16 @@ namespace LogViewer
                 imageInfo.Visibility = Visibility.Hidden;
             }
 
-            int WarnCount =
+            int warnCount =
                 (
                     from entry in Entries
                     where entry.Level == "WARN"
                     select entry
                     ).Count();
 
-            if (WarnCount > 0)
+            if (warnCount > 0)
             {
-                labelWarnCount.Content = string.Format("{0:#,#}  ", WarnCount);
+                labelWarnCount.Content = string.Format("{0:#,#}  ", warnCount);
                 labelWarnCount.Visibility = Visibility.Visible;
                 imageWarn.Visibility = Visibility.Visible;
             }
@@ -186,16 +210,16 @@ namespace LogViewer
                 imageWarn.Visibility = Visibility.Hidden;
             }
 
-            int DebugCount =
+            int debugCount =
                 (
                     from entry in Entries
                     where entry.Level == "DEBUG"
                     select entry
                     ).Count();
 
-            if (DebugCount > 0)
+            if (debugCount > 0)
             {
-                labelDebugCount.Content = string.Format("{0:#,#}  ", DebugCount);
+                labelDebugCount.Content = string.Format("{0:#,#}  ", debugCount);
                 labelDebugCount.Visibility = Visibility.Visible;
                 imageDebug.Visibility = Visibility.Visible;
             }
@@ -204,26 +228,19 @@ namespace LogViewer
                 labelDebugCount.Visibility = Visibility.Hidden;
                 labelDebugCount.Visibility = Visibility.Hidden;
             }
-            ////////////////////////////////////////////////////////////////////////////////
 
-            #endregion
         }
 
         private void LoadFile()
         {
             textboxFileName.Text = FileName;
-            _entries.Clear();
-            listView1.ItemsSource = null;
-
-            DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0);
-            string sXml = string.Empty;
-            int iIndex = 1;
 
             Clear();
 
             XMLReader.LoadXmlFile(FileName, _entries);
 
             listView1.ItemsSource = _entries;
+            _isLoaded = true;
         }
 
         #endregion
@@ -234,17 +251,15 @@ namespace LogViewer
         {
             try
             {
-                Clear();
                 LogEntry logentry = this.listView1.SelectedItem as LogEntry;
-                this.textBoxMessage.Text = logentry.Message;
-                this.textBoxThrowable.Text = logentry.Throwable;
-
+                if (logentry != null)
+                {
+                    this.textBoxMessage.Text = logentry.Message;
+                    this.textBoxThrowable.Text = logentry.Throwable;
+                }
             }
             catch { }
         }
-
-        private ListSortDirection _Direction = ListSortDirection.Descending;
-        private string _filterText;
 
         private void ListView1_HeaderClicked(object sender, RoutedEventArgs e)
         {
@@ -254,8 +269,8 @@ namespace LogViewer
             {
                 ICollectionView dataView = CollectionViewSource.GetDefaultView(source.ItemsSource);
                 dataView.SortDescriptions.Clear();
-                _Direction = _Direction == ListSortDirection.Ascending ? ListSortDirection.Descending : ListSortDirection.Ascending;
-                SortDescription description = new SortDescription(header.Content.ToString(), _Direction);
+                _direction = _direction == ListSortDirection.Ascending ? ListSortDirection.Descending : ListSortDirection.Ascending;
+                SortDescription description = new SortDescription(header.Content.ToString(), _direction);
                 dataView.SortDescriptions.Add(description);
                 dataView.Refresh();
             }
@@ -398,19 +413,7 @@ namespace LogViewer
 
         private void ComboBoxLevel_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            string level = comboBoxLevel.SelectedItem.ToString();
-            if (level == ELogLevelType.All.ToString())
-            {
-                EntryCollection.Filter = null;
-            }
-            else
-            {
-                EntryCollection.Filter = item =>
-                {
-                    LogEntry vitem = item as LogEntry;
-                    return vitem != null && vitem.Level.ToLower() == level.ToLower();
-                };
-            }
+            FilterEntries();
         }
 
         #endregion
